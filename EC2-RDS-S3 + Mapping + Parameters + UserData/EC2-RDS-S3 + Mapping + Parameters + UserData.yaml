@@ -1,0 +1,105 @@
+Parameters:
+  EnvironmentSize: #Name of the parameters (Key)
+    Type: String
+    Default: SMALL
+    AllowedValues:
+      - SMALL
+      - MEDIUM
+      - LARGE
+    Description: Environment Size
+  DatabaseName:
+    Type: String
+    Default: defaultName
+  DatabaseUser:
+    Type: String
+    Default: defaultUser
+  DatabasePassword:
+    Type: String
+    Default: defaultPassword
+    NoEcho: true
+Mappings:
+  RegionMap:
+    us-east-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    us-east-2:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    us-west-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    us-west-2:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    sa-east-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    ca-central-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    eu-west-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    eu-west-2:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    eu-west-3:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    eu-central-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    ap-southeast-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    ap-southeast-2:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    ap-northeast-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    ap-northeast-2:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    ap-south-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    cn-north-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+  InstanceSize:
+    SMALL:
+      "EC2" : "t2.micro"
+      "DB" : "db.t2.micro"
+    MEDIUM:
+      "EC2" : "t2.small"
+      "DB" : "db.t2.small"
+    LARGE:
+      "EC2" : "t2.medium"
+      "DB" : "db.t2.medium"
+Resources:
+  DB:
+    Type: "AWS::RDS::DBInstance"
+    Properties:
+      AllocatedStorage: 5
+      StorageType: gp2
+      DBInstanceClass: !FindInMap [InstanceSize, !Ref EnvironmentSize, DB] # !FindInMap [Map, Key, Name]
+      DBName: !Ref DatabaseName
+      Engine: MySQL
+      MasterUsername: !Ref DatabaseUser
+      MasterUserPassword: !Ref DatabasePassword
+  EC2:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMIFORLINUX] # !FindInMap [Map, Key, Name] and also using the pseudo-parameter AWS::Region
+      InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2] # Look for the value of the EnvironmentSize, give me SMALL, MEDIUM OR LARGE, and then, look for the value of the InstanceSize mapping for SMALL, MEDIUM OR LARGE and for EC2 name
+      KeyName: YourKeyPairName #Use this key to connect to the instance, you have to create the key in all the regions. 
+      UserData: 
+        "Fn::Base64":
+          !Sub |
+            #!/bin/bash
+            yum install httpd php mysql php-mysql -y
+            yum update -y
+            chkconfig httpd on
+            service httpd start
+            cd /var/www/html
+            wget https://wordpress.org/latest.tar.gz
+            tar -zxvf latest.tar.gz --strip 1
+            rm latest.tar.gz
+            cp wp-config-sample.php wp-config.php
+            sed -i 's/database_name_here/${DatabaseName}/g' wp-config.php
+            sed -i 's/localhost/${DB.Endpoint.Address}/g' wp-config.php
+            sed -i 's/username_here/${DatabaseUser}/g' wp-config.php
+            sed -i 's/password_here/${DatabasePassword}/g' wp-config.php
+    DependsOn: DB
+  S3:
+    Type: "AWS::S3::Bucket"
+
+  #!Sub is to set parameters inside the userData with the ${MyParameter}
+  # The simbole | allow you to use multi line
+  # DB.Endpoint.Adress reference the attribute of the DB Endpoint.Adress
+  # sed is a command to sustite text, for example, sustitute the username_here with the DatabaseUser

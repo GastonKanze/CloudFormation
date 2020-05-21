@@ -1,12 +1,22 @@
 {
-  "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "EC2-RDS-S3 + Mapping + Parameters",
 	"Parameters": {
 		"EnvironmentSize": {
 			"Type": "String",
 			"Default": "SMALL",
 			"AllowedValues": [	"SMALL", "MEDIUM", "LARGE" ],
 			"Description": "Environment Size"
+		},
+		"DatabaseName" : {
+			"Type" : "String",
+			"Default" : "defaultName"
+		},
+		"DatabaseUser" : {
+			"Type" : "String",
+			"Default" : "defaultUser"
+		},
+		"DatabasePassword" : {
+			"Type" : "String",
+			"Default" : "defaultPassword"
 		}
 	},
 	"Mappings": {
@@ -29,12 +39,11 @@
       		"cn-north-1"    : {	"AMIFORLINUX": "ami-00000000000000000" }
       	},
 		"InstanceSize": {
-			"SMALL" : { "EC2": "t2.micro",  "DB": "db.t2.micro"  },
-			"MEDIUM": { "EC2": "t2.small",  "DB": "db.t2.small"  },
+			"SMALL" : { "EC2": "t2.micro",  "DB": "db.t2.micro" },
+			"MEDIUM": { "EC2": "t2.small",  "DB": "db.t2.small" },
 			"LARGE" : {	"EC2": "t2.medium",	"DB": "db.t2.medium" }
 		}
 	},
-
 	"Resources": {
 		"DB": {
 			"Type": "AWS::RDS::DBInstance",
@@ -42,18 +51,36 @@
 				"AllocatedStorage": 5,
 				"StorageType" : "gp2",
 				"DBInstanceClass": {"Fn::FindInMap" : ["InstanceSize", {"Ref" : "EnvironmentSize"}, "DB"]},
-				"DBName": "YourDBName",
+				"DBName": {"Ref" : "DatabaseName"},
 				"Engine": "MySQL",
-				"MasterUsername": "YourUserName",
-				"MasterUserPassword": "YourPassword"
+				"MasterUsername": {"Ref" : "DatabaseUser"},
+				"MasterUserPassword": {"Ref" : "DatabasePassword"}
 			}
 		},
 		"EC2": {
 			"Type": "AWS::EC2::Instance",
 			"Properties": {
 				"ImageId": {"Fn::FindInMap" : ["RegionMap", {"Ref" : "AWS::Region"}, "AMIFORLINUX"]},
-				"InstanceType": {"Fn::FindInMap" : ["InstanceSize", {"Ref" : "EnvironmentSize"}, "EC2"]}
-			}
+				"InstanceType": {"Fn::FindInMap" : ["InstanceSize", {"Ref" : "EnvironmentSize"}, "EC2"]},
+				"KeyName" : "YourKeyPairName",
+				"UserData" : {"Fn::Base64" : {"Fn::Join" : ["", [
+						"#!/bin/bash", "\n",
+						"yum install httpd php mysql php-mysql -y", "\n",
+						"yum update -y", "\n",
+						"chkconfig httpd on", "\n",
+						"service httpd start", "\n",
+						"cd /var/www/html", "\n",
+						"wget https://wordpress.org/latest.tar.gz", "\n",
+						"tar -zxvf latest.tar.gz --strip 1", "\n",
+						"rm latest.tar.gz", "\n",
+						"cp wp-config-sample.php wp-config.php", "\n",
+						"sed -i 's/database_name_here/", {"Ref" : "DatabaseName"}, "/g' wp-config.php", "\n",
+						"sed -i 's/localhost/", {"Fn::GetAtt" : ["DB", "Endpoint.Address"]}, "/g' wp-config.php", "\n",
+						"sed -i 's/username_here/", {"Ref" : "DatabaseUser"}, "/g' wp-config.php", "\n",
+						"sed -i 's/password_here/", {"Ref" : "DatabasePassword"},"/g' wp-config.php", "\n"
+				]]}}
+			},
+			"DependsOn" : "DB"
 		},
 		"S3": {
 			"Type": "AWS::S3::Bucket"
