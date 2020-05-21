@@ -1,0 +1,62 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "EC2-RDS-S3 + Mapping + Parameters",
+	"Parameters": {
+		"EnvironmentSize": {
+			"Type": "String",
+			"Default": "SMALL",
+			"AllowedValues": [	"SMALL", "MEDIUM", "LARGE" ],
+			"Description": "Environment Size"
+		}
+	},
+	"Mappings": {
+		"RegionMap": {
+			"us-east-1"     : { "AMIFORLINUX": "ami-00000000000000000" },
+			"us-east-2"     : { "AMIFORLINUX": "ami-00000000000000000" },
+			"us-west-1"     : { "AMIFORLINUX": "ami-00000000000000000" },
+			"us-west-2"     : { "AMIFORLINUX": "ami-00000000000000000" },
+      		"sa-east-1"     : {	"AMIFORLINUX": "ami-00000000000000000" },
+			"ca-central-1"  : { "AMIFORLINUX": "ami-00000000000000000" },
+			"eu-west-1"     : { "AMIFORLINUX": "ami-00000000000000000" },
+			"eu-west-2"     : { "AMIFORLINUX": "ami-00000000000000000" },
+      		"eu-west-3"     : { "AMIFORLINUX": "ami-00000000000000000" },
+      		"eu-central-1"  : { "AMIFORLINUX": "ami-00000000000000000" },
+			"ap-southeast-1": {	"AMIFORLINUX": "ami-00000000000000000" },
+			"ap-southeast-2": {	"AMIFORLINUX": "ami-00000000000000000" },
+   		   	"ap-northeast-1": {	"AMIFORLINUX": "ami-00000000000000000" },
+			"ap-northeast-2": {	"AMIFORLINUX": "ami-00000000000000000" },
+      		"ap-south-1"    : {	"AMIFORLINUX": "ami-00000000000000000" },
+      		"cn-north-1"    : {	"AMIFORLINUX": "ami-00000000000000000" }
+      	}
+		"InstanceSize": {
+			"SMALL" : { "EC2": "t2.micro",  "DB": "db.t2.micro"  },
+			"MEDIUM": { "EC2": "t2.small",  "DB": "db.t2.small"  },
+			"LARGE" : {	"EC2": "t2.medium",	"DB": "db.t2.medium" }
+		}
+	},
+
+	"Resources": {
+		"DB": {
+			"Type": "AWS::RDS::DBInstance",
+			"Properties": {
+				"AllocatedStorage": 5,
+				"StorageType" : "gp2",
+				"DBInstanceClass": {"Fn::FindInMap" : ["InstanceSize", {"Ref" : "EnvironmentSize"}, "DB"]},
+				"DBName": "YourDBName",
+				"Engine": "MySQL",
+				"MasterUsername": "YourUserName",
+				"MasterUserPassword": "YourPassword"
+			}
+		},
+		"EC2": {
+			"Type": "AWS::EC2::Instance",
+			"Properties": {
+				"ImageId": {"Fn::FindInMap" : ["RegionMap", {"Ref" : "AWS::Region"}, "AMIFORLINUX"]},
+				"InstanceType": {"Fn::FindInMap" : ["InstanceSize", {"Ref" : "EnvironmentSize"}, "EC2"]}
+			}
+		},
+		"S3": {
+			"Type": "AWS::S3::Bucket"
+		}
+	}
+}

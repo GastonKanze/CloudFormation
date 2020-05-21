@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'EC2-RDS-S3 + Mapping + Parameters'
+Parameters:
+  EnvironmentSize: #Name of the parameters (Key)
+    Type: String
+    Default: SMALL
+    AllowedValues:
+      - SMALL
+      - MEDIUM
+      - LARGE
+    Description: Environment Size
+Mappings:
+  RegionMap:
+    us-east-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    us-east-2:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    us-west-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    us-west-2:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    sa-east-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    ca-central-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    eu-west-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    eu-west-2:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    eu-west-3:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    eu-central-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    ap-southeast-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    ap-southeast-2:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    ap-northeast-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    ap-northeast-2:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    ap-south-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+    cn-north-1:
+      AMIFORLINUX: ami-0000000000000000 #Replace 0000000000000000 with the correct ami string for the region
+  InstanceSize:
+    SMALL:
+      "EC2" : "t2.micro"
+      "DB" : "db.t2.micro"
+    MEDIUM:
+      "EC2" : "t2.small"
+      "DB" : "db.t2.small"
+    LARGE:
+      "EC2" : "t2.medium"
+      "DB" : "db.t2.medium"
+Resources:
+  DB:
+    Type: "AWS::RDS::DBInstance"
+    Properties:
+      AllocatedStorage: 5
+      StorageType: gp2
+      DBInstanceClass: !FindInMap [InstanceSize, !Ref EnvironmentSize, DB] # !FindInMap [Map, Key, Name]
+      DBName: YourDBName
+      Engine: MySQL
+      MasterUsername: YourUserName
+      MasterUserPassword: YourPassword
+  EC2:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMIFORLINUX] # !FindInMap [Map, Key, Name] and also using the pseudo-parameter AWS::Region
+      InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2] # Look for the value of the EnvironmentSize, give me SMALL, MEDIUM OR LARGE, and then, look for the value of the InstanceSize mapping for SMALL, MEDIUM OR LARGE and for EC2 name
+  S3:
+    Type: "AWS::S3::Bucket"
+
